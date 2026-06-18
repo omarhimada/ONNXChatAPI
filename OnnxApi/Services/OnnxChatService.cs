@@ -7,13 +7,13 @@ using System.Text;
 
 namespace OnnxChatApi.Services;
 
-public sealed class OnnxChatService : IChatService, IDisposable {
-    private readonly OnnxGenAIOptions _options;
+public sealed class ONNXChatService : IChatService, IDisposable {
+    private readonly ONNXGenAIOptions _options;
     private readonly Model _model;
     private readonly Tokenizer _tokenizer;
     private readonly SemaphoreSlim _generationLock = new(1, 1);
 
-    public OnnxChatService(IOptions<OnnxGenAIOptions> options) {
+    public ONNXChatService(IOptions<ONNXGenAIOptions> options) {
         _options = options.Value;
 
         if (!Directory.Exists(_options.ModelPath)) {
