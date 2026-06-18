@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnnxChatApi.Models;
 using OnnxChatApi.Services;
@@ -14,6 +15,7 @@ public sealed class ChatController : ControllerBase {
     }
 
     [HttpPost]
+    [ApiKey]
     [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ChatResponse>> Chat(

@@ -1,5 +1,6 @@
 using OnnxChatApi.Options;
 using OnnxChatApi.Services;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +13,23 @@ builder.Services.AddSingleton<IChatService, ONNXChatService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// Configured Swagger to show the "Authorize" button for your long API key validation
+builder.Services.AddSwaggerGen(c => {
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "OnnxChatApi", Version = "v1" });
+
+    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme {
+        Type = SecuritySchemeType.ApiKey,
+        Name = "X-API-Key",
+        In = ParameterLocation.Header,
+        Description = "API key required"
+    });
+
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement {
+        [new OpenApiSecuritySchemeReference("ApiKey", document)] = []
+    });
+});
+
 
 var app = builder.Build();
 
