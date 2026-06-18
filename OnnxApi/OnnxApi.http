@@ -1,0 +1,6 @@
+@OnnxApi_HostAddress = http://localhost:5028
+
+GET {{OnnxApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
