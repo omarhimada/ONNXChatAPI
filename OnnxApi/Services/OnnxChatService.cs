@@ -3,6 +3,7 @@ using Microsoft.ML.OnnxRuntimeGenAI;
 using OnnxChatApi.Options;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 
 namespace OnnxChatApi.Services;
 
@@ -37,14 +38,24 @@ public sealed class OnnxChatService : IChatService, IDisposable {
             generatorParams.SetSearchOption("temperature", _options.Temperature);
             generatorParams.SetSearchOption("top_p", _options.TopP);
             generatorParams.SetSearchOption("do_sample", true);
-            generatorParams.SetInputSequences(sequences);
 
             using var generator = new Generator(_model, generatorParams);
 
+            generator.AppendTokenSequences(sequences);
+
+            using TokenizerStream ts = _tokenizer.CreateStream();
+
+            StringBuilder sb = new();
+
             while (!generator.IsDone()) {
                 cancellationToken.ThrowIfCancellationRequested();
-                generator.ComputeLogits();
                 generator.GenerateNextToken();
+
+                string piece = ts.Decode(generator.GetSequence(0)[^1]);
+                //if (piece == _thinkStart) {
+                //    continue;
+                //}
+                sb.Append($"{piece} ");
             }
 
             var outputTokens = generator.GetSequence(0);
