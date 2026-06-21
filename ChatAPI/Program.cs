@@ -1,6 +1,8 @@
+using Microsoft.OpenApi;
 using OnnxChatApi.Options;
 using OnnxChatApi.Services;
-using Microsoft.OpenApi;
+using System.Net.WebSockets;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,5 +43,43 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.MapControllers();
+
+app.UseWebSockets();
+
+
+
+app.Map("/ws/chat", async context => {
+    if (!context.WebSockets.IsWebSocketRequest) {
+        context.Response.StatusCode = 400;
+        return;
+    }
+
+    using var socket = await context.WebSockets.AcceptWebSocketAsync();
+
+    var buffer = new byte[4096];
+    var result = await socket.ReceiveAsync(buffer, context.RequestAborted);
+    var prompt = Encoding.UTF8.GetString(buffer, 0, result.Count);
+
+    var chatService = context.RequestServices
+        .GetRequiredService<IChatService>();
+
+    await chatService.ChatAsync(prompt, context.RequestAborted);
+
+    await socket.CloseAsync(
+        WebSocketCloseStatus.NormalClosure,
+        "Done",
+        context.RequestAborted);
+}).AddEndpointFilter(async (context, next) => {
+    var http = context.HttpContext;
+    var config = http.RequestServices.GetRequiredService<IConfiguration>();
+
+    var expectedApiKey = config["ApiKey"];
+    var actualApiKey = http.Request.Headers["X-Api-Key"].ToString();
+
+    if (actualApiKey != expectedApiKey)
+        return Results.Unauthorized();
+
+    return await next(context);
+});
 
 app.Run();

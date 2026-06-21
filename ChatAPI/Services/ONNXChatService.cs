@@ -3,6 +3,7 @@ using Microsoft.ML.OnnxRuntimeGenAI;
 using OnnxChatApi.Options;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace OnnxChatApi.Services;
@@ -10,7 +11,7 @@ namespace OnnxChatApi.Services;
 public sealed class ONNXChatService : IChatService, IDisposable {
     private readonly ONNXGenAIOptions _options;
     private readonly Model _model;
-    
+
     public readonly Tokenizer _tokenizer;
     public readonly SemaphoreSlim _generationLock = new(1, 1);
 
@@ -147,8 +148,17 @@ public sealed class ONNXChatService : IChatService, IDisposable {
         _tokenizer = new Tokenizer(_model);
     }
 
-    public async Task<string> ChatAsync(string userMessage, CancellationToken cancellationToken) {
-        await _generationLock.WaitAsync(cancellationToken);
+    public record ChatChunk(string Token);
+
+    public async IAsyncEnumerable<ChatChunk> ChatStream(string userMessage, [EnumeratorCancellation] CancellationToken cancellationToken) {
+            await foreach (var token in GenerateTokenStream(userMessage, cancellationToken)) {
+                yield return new ChatChunk(token);
+            }
+        }
+
+    private async IAsyncEnumerable<string> GenerateTokenStream(
+        string userMessage,
+        [EnumeratorCancellation] CancellationToken ct) {
 
         try {
             var prompt = BuildPrompt(userMessage);
@@ -170,20 +180,23 @@ public sealed class ONNXChatService : IChatService, IDisposable {
             StringBuilder sb = new();
 
             while (!generator.IsDone()) {
-                cancellationToken.ThrowIfCancellationRequested();
+                ct.ThrowIfCancellationRequested();
                 generator.GenerateNextToken();
 
                 string piece = ts.Decode(generator.GetSequence(0)[^1]);
                 //if (piece == _thinkStart) {
                 //    continue;
                 //}
-                sb.Append($"{piece} ");
+                yield return $"{piece} ";
+
+
+                ct.ThrowIfCancellationRequested();
             }
 
             var outputTokens = generator.GetSequence(0);
             var fullText = _tokenizer.Decode(outputTokens);
 
-            return TrimPromptEcho(fullText, prompt);
+            //
         } finally {
             _generationLock.Release();
         }
