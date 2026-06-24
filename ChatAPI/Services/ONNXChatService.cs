@@ -137,12 +137,15 @@ public sealed class ONNXChatService : IChatService, IDisposable {
     #endregion
 
     public ONNXChatService(IOptions<ONNXGenAIOptions> options) {
+        const string _cuda = "cuda";
+        const string _error = "ONNX GenAI model folder not found: ";
         _options = options.Value;
 
         if (!Directory.Exists(_options.ModelPath)) {
-            throw new DirectoryNotFoundException(
-                $"ONNX GenAI model folder not found: {_options.ModelPath}");
+            throw new DirectoryNotFoundException($"{ _error}{_options.ModelPath}");
         }
+        Config config = new(_options.ModelPath);
+        config.AppendProvider(_cuda);
 
         _model = new Model(_options.ModelPath);
         _tokenizer = new Tokenizer(_model);

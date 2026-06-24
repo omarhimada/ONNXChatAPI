@@ -1,3 +1,7 @@
 <Solution>
   <Project Path="ChatAPI/ChatAPI.csproj" />
+  <Project Path="ChatUI/chatui.esproj">
+    <Build />
+    <Deploy />
+  </Project>
 </Solution>
